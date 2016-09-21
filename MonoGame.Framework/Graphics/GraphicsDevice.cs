@@ -53,6 +53,7 @@ namespace Microsoft.Xna.Framework.Graphics
 
         private readonly RenderTargetBinding[] _currentRenderTargetBindings = new RenderTargetBinding[4];
         private int _currentRenderTargetCount;
+        private readonly RenderTargetBinding[] _tempRenderTargetBinding = new RenderTargetBinding[1];
 
         internal GraphicsCapabilities GraphicsCapabilities { get; private set; }
 
@@ -212,8 +213,18 @@ namespace Microsoft.Xna.Framework.Graphics
 
         private void Setup()
         {
-			// Initialize the main viewport
-			_viewport = new Viewport (0, 0,
+#if DEBUG
+            if (DisplayMode == null)
+            {
+                throw new Exception(
+                    "Unable to determine the current display mode.  This can indicate that the " +
+                    "game is not configured to be HiDPI aware under Windows 10 or later.  See " +
+                    "https://github.com/MonoGame/MonoGame/issues/5040 for more information.");
+            }
+#endif
+
+            // Initialize the main viewport
+            _viewport = new Viewport (0, 0,
 			                         DisplayMode.Width, DisplayMode.Height);
 			_viewport.MaxDepth = 1.0f;
 
@@ -655,17 +666,27 @@ namespace Microsoft.Xna.Framework.Graphics
 		public void SetRenderTarget(RenderTarget2D renderTarget)
 		{
 			if (renderTarget == null)
+		    {
                 SetRenderTargets(null);
+		    }
 			else
-				SetRenderTargets(new RenderTargetBinding(renderTarget));
+			{
+				_tempRenderTargetBinding[0] = new RenderTargetBinding(renderTarget);
+				SetRenderTargets(_tempRenderTargetBinding);
+			}
 		}
 
         public void SetRenderTarget(RenderTargetCube renderTarget, CubeMapFace cubeMapFace)
         {
             if (renderTarget == null)
-                SetRenderTarget(null);
+            {
+                SetRenderTargets(null);
+            }
             else
-                SetRenderTargets(new RenderTargetBinding(renderTarget, cubeMapFace));
+            {
+                _tempRenderTargetBinding[0] = new RenderTargetBinding(renderTarget, cubeMapFace);
+                SetRenderTargets(_tempRenderTargetBinding);
+            }
         }
 
 		public void SetRenderTargets(params RenderTargetBinding[] renderTargets)
@@ -841,6 +862,7 @@ namespace Microsoft.Xna.Framework.Graphics
                     return;
 
                 _vertexShader = value;
+                _vertexConstantBuffers.Clear();
                 _vertexShaderDirty = true;
             }
         }
@@ -855,6 +877,7 @@ namespace Microsoft.Xna.Framework.Graphics
                     return;
 
                 _pixelShader = value;
+                _pixelConstantBuffers.Clear();
                 _pixelShaderDirty = true;
             }
         }
@@ -1102,6 +1125,24 @@ namespace Microsoft.Xna.Framework.Graphics
         internal static GraphicsProfile GetHighestSupportedGraphicsProfile(GraphicsDevice graphicsDevice)
         {
             return PlatformGetHighestSupportedGraphicsProfile(graphicsDevice);
+        }
+
+        // uniformly scales down the given rectangle by 10%
+        internal static Rectangle GetDefaultTitleSafeArea(int x, int y, int width, int height)
+        {
+            var marginX = (width + 19) / 20;
+            var marginY = (height + 19) / 20;
+            x += marginX;
+            y += marginY;
+
+            width -= marginX * 2;
+            height -= marginY * 2;
+            return new Rectangle(x, y, width, height);
+        }
+
+        internal static Rectangle GetTitleSafeArea(int x, int y, int width, int height)
+        {
+            return PlatformGetTitleSafeArea(x, y, width, height);
         }
     }
 }

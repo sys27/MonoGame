@@ -35,7 +35,6 @@ Tara Walker's "Building a Shooter Game" tutorial series.
  - [BMFont rendering with MonoGame](http://www.craftworkgames.com/blog/tutorial-bmfont-rendering-with-monogame/)
  - [RB Whitaker's MonoGame Tutorials](http://rbwhitaker.wikidot.com/monogame-tutorials)
  - [RB Whitaker's XNA Tutorials including sharers, 2D, 3D, Game loops, advancted topics](http://rbwhitaker.wikidot.com/xna-tutorials)
- - [Another list of tutorials from the MonoGame github](https://github.com/mono/MonoGame/wiki/Tutorials)
  - [Setting window position tutorial](http://projectdrake.net/blog/?p=176)
  - [Using Spine with MonoGame - by Randolph Burt (Randeroo)](http://randolphburt.co.uk/2013/03/30/dragons-and-dancing-crabs/)
  - [Mac porting series](http://benkane.wordpress.com/2012/01/20/the-great-porting-adventure-day-8/)
@@ -48,7 +47,7 @@ Tara Walker's "Building a Shooter Game" tutorial series.
  - [Solving Resolution Independent Rendering And 2D Camera Using Monogame](http://blog.roboblob.com/2013/07/27/solving-resolution-independent-rendering-and-2d-camera-using-monogame/)
  - [XNA is Dead; Long Live the New XNA, MonoGame](http://www.codemag.com/Article/1411081)
  - [Make Santa Jump - Making an endless runner game in F# using MonoGame](http://timjones.tw/blog/archive/2014/12/28/make-santa-jump-game-in-fsharp-using-monogame)
- - [Running MonoGame on Android Wear] (http://crossplatform.io/2015/05/04/running-monogame-on-android-wear/)
+ - [Running MonoGame on Android Wear] (http://crossplatform.io/running-monogame-on-android-wear/)
  
 ## Video Tutorials
 
