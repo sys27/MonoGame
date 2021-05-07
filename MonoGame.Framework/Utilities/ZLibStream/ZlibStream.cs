@@ -91,7 +91,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace MonoGame.Utilities
+namespace MonoGame.Framework.Utilities
 {
 
     /// <summary>
@@ -8378,7 +8378,7 @@ namespace MonoGame.Utilities
         /// </summary>
         /// <remarks>
         ///   <para>
-        ///     Set this at any point before calling <see cref="Close()"/>.
+        ///     Set this at any point before calling <see cref="Stream.Close"/>.
         ///   </para>
         /// </remarks>
         internal bool LeaveOpen

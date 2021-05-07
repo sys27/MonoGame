@@ -57,8 +57,8 @@ namespace Microsoft.Xna.Framework.Graphics.PackedVector
         public Vector2 ToVector2()
         {
             return new Vector2(
-                (float) (((packedValue >> 16) & 0xFFFF) / 65535.0f),
-                (float) ((packedValue & 0xFFFF) / 65535.0f)
+                (float) ((packedValue & 0xFFFF) / 65535.0f),
+                (float)(((packedValue >> 16) & 0xFFFF) / 65535.0f)
             );
         }
 
@@ -75,7 +75,7 @@ namespace Microsoft.Xna.Framework.Graphics.PackedVector
         /// Gets the packed vector in Vector4 format.
         /// </summary>
         /// <returns>The packed vector in Vector4 format</returns>
-        Vector4 IPackedVector.ToVector4()
+        public Vector4 ToVector4()
         {
             return new Vector4(ToVector2(), 0.0f, 1.0f);
         }

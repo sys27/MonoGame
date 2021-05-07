@@ -19,10 +19,10 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Graphics
                     platform == TargetPlatform.NativeClient ||
                     platform == TargetPlatform.RaspberryPi ||
                     platform == TargetPlatform.Windows ||
-                    platform == TargetPlatform.WindowsPhone ||
                     platform == TargetPlatform.WindowsPhone8 ||
                     platform == TargetPlatform.WindowsStoreApp ||
-                    platform == TargetPlatform.iOS;
+                    platform == TargetPlatform.iOS ||
+                    platform == TargetPlatform.Web;
         }
 
         private static bool IsCompressedTextureFormat(TextureProcessorOutputFormat format)
@@ -64,7 +64,8 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Graphics
                             platform == TargetPlatform.WindowsStoreApp ||
                             platform == TargetPlatform.DesktopGL ||
                             platform == TargetPlatform.MacOSX ||
-                            platform == TargetPlatform.NativeClient)
+                            platform == TargetPlatform.NativeClient ||
+                            platform == TargetPlatform.Web)
                 {
                     if (format != TextureProcessorOutputFormat.DxtCompressed)
                         throw new PlatformNotSupportedException(format + " platform only supports DXT texture compression");
@@ -109,7 +110,7 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Graphics
             }
         }
 
-        protected override void PlatformCompressTexture(ContentProcessorContext context, TextureContent content, TextureProcessorOutputFormat format, bool generateMipmaps, bool sharpAlpha)
+        protected override void PlatformCompressTexture(ContentProcessorContext context, TextureContent content, TextureProcessorOutputFormat format, bool isSpriteFont)
         {
             format = GetTextureFormatForPlatform(format, context.TargetPlatform);
 
@@ -119,23 +120,23 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Graphics
             switch (format)
             {
                 case TextureProcessorOutputFormat.AtcCompressed:
-                    GraphicsUtil.CompressAti(content, generateMipmaps);
+                    GraphicsUtil.CompressAti(context, content, isSpriteFont);
                     break;
 
                 case TextureProcessorOutputFormat.Color16Bit:
-                    GraphicsUtil.CompressColor16Bit(content, generateMipmaps);
+                    GraphicsUtil.CompressColor16Bit(context, content);
                     break;
 
                 case TextureProcessorOutputFormat.DxtCompressed:
-                    GraphicsUtil.CompressDxt(context.TargetProfile, content, generateMipmaps, sharpAlpha);
+                    GraphicsUtil.CompressDxt(context, content, isSpriteFont);
                     break;
 
                 case TextureProcessorOutputFormat.Etc1Compressed:
-                    GraphicsUtil.CompressEtc1(content, generateMipmaps);
+                    GraphicsUtil.CompressEtc1(context, content, isSpriteFont);
                     break;
 
                 case TextureProcessorOutputFormat.PvrCompressed:
-                    GraphicsUtil.CompressPvrtc(content, generateMipmaps);
+                    GraphicsUtil.CompressPvrtc(context, content, isSpriteFont);
                     break;
             }
         }

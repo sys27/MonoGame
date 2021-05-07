@@ -7,10 +7,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using Microsoft.Xna.Framework.Utilities;
+using MonoGame.Framework.Utilities;
 using Microsoft.Xna.Framework.Graphics;
+using System.Globalization;
 
-#if !WINRT
+#if !WINDOWS_UAP
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
 #endif
@@ -24,20 +25,20 @@ namespace Microsoft.Xna.Framework.Content
 
 		private string _rootDirectory = string.Empty;
 		private IServiceProvider serviceProvider;
-		private IGraphicsDeviceService graphicsDeviceService;
         private Dictionary<string, object> loadedAssets = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 		private List<IDisposable> disposableAssets = new List<IDisposable>();
         private bool disposed;
-        private byte[] scratchBuffer;
 
 		private static object ContentManagerLock = new object();
         private static List<WeakReference> ContentManagers = new List<WeakReference>();
 
+        internal static readonly ByteBufferPool ScratchBufferPool = new ByteBufferPool(1024 * 1024, Environment.ProcessorCount);
+
         private static readonly List<char> targetPlatformIdentifiers = new List<char>()
         {
-            'w', // Windows (DirectX)
-            'x', // Xbox360
-            'm', // WindowsPhone
+            'w', // Windows (XNA & DirectX)
+            'x', // Xbox360 (XNA)
+            'm', // WindowsPhone7.0 (XNA)
             'i', // iOS
             'a', // Android
             'd', // DesktopGL
@@ -49,6 +50,9 @@ namespace Microsoft.Xna.Framework.Content
             'P', // PlayStation4
             'v', // PSVita
             'O', // XboxOne
+            'S', // Nintendo Switch
+            'G', // Google Stadia
+            'b', // WebAssembly and Bridge.NET
 
             // NOTE: There are additional idenfiers for consoles that 
             // are not defined in this repository.  Be sure to ask the
@@ -61,7 +65,6 @@ namespace Microsoft.Xna.Framework.Content
             'p', // PlayStationMobile
             'g', // Windows (OpenGL)
             'l', // Linux
-            'u', // Ouya
         };
 
 
@@ -189,9 +192,33 @@ namespace Microsoft.Xna.Framework.Content
                 {
                     Unload();
                 }
+
 				disposed = true;
 			}
 		}
+
+        public virtual T LoadLocalized<T> (string assetName)
+        {
+            string [] cultureNames =
+            {
+                CultureInfo.CurrentCulture.Name,                        // eg. "en-US"
+                CultureInfo.CurrentCulture.TwoLetterISOLanguageName     // eg. "en"
+            };
+
+            // Look first for a specialized language-country version of the asset,
+            // then if that fails, loop back around to see if we can find one that
+            // specifies just the language without the country part.
+            foreach (string cultureName in cultureNames) {
+                string localizedAssetName = assetName + '.' + cultureName;
+
+                try {
+                    return Load<T> (localizedAssetName);
+                } catch (ContentLoadException) { }
+            }
+
+            // If we didn't find any localized asset, fall back to the default name.
+            return Load<T> (assetName);
+        }
 
 		public virtual T Load<T>(string assetName)
 		{
@@ -241,7 +268,7 @@ namespace Microsoft.Xna.Framework.Content
                 // This is primarily for editor support. 
                 // Setting the RootDirectory to an absolute path is useful in editor
                 // situations, but TitleContainer can ONLY be passed relative paths.                
-#if DESKTOPGL || MONOMAC || WINDOWS
+#if DESKTOPGL || WINDOWS
                 if (Path.IsPathRooted(assetPath))                
                     stream = File.OpenRead(assetPath);                
                 else
@@ -261,7 +288,7 @@ namespace Microsoft.Xna.Framework.Content
 			{
 				throw new ContentLoadException("The content file was not found.", fileNotFound);
 			}
-#if !WINRT
+#if !WINDOWS_UAP
 			catch (DirectoryNotFoundException directoryNotFound)
 			{
 				throw new ContentLoadException("The directory was not found.", directoryNotFound);
@@ -288,15 +315,6 @@ namespace Microsoft.Xna.Framework.Content
 			string originalAssetName = assetName;
 			object result = null;
 
-			if (this.graphicsDeviceService == null)
-			{
-				this.graphicsDeviceService = serviceProvider.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
-				if (this.graphicsDeviceService == null)
-				{
-					throw new InvalidOperationException("No Graphics Device Service");
-				}
-			}
-			
             // Try to load as XNB file
             var stream = OpenStream(assetName);
             using (var xnbReader = new BinaryReader(stream))
@@ -363,7 +381,7 @@ namespace Microsoft.Xna.Framework.Content
                 decompressedStream = stream;
             }
 
-            var reader = new ContentReader(this, decompressedStream, this.graphicsDeviceService.GraphicsDevice,
+            var reader = new ContentReader(this, decompressedStream,
                                                         originalAssetName, version, recordDisposableObject);
             
             return reader;
@@ -396,11 +414,7 @@ namespace Microsoft.Xna.Framework.Content
                 if (asset.Key == null)
                     ReloadAsset(asset.Key, Convert.ChangeType(asset.Value, asset.Value.GetType()));
 
-#if WINDOWS_STOREAPP || WINDOWS_UAP
-                var methodInfo = typeof(ContentManager).GetType().GetTypeInfo().GetDeclaredMethod("ReloadAsset");
-#else
-                var methodInfo = typeof(ContentManager).GetMethod("ReloadAsset", BindingFlags.NonPublic | BindingFlags.Instance);
-#endif
+                var methodInfo = ReflectionHelpers.GetMethodInfo(typeof(ContentManager), "ReloadAsset");
                 var genericMethod = methodInfo.MakeGenericMethod(asset.Value.GetType());
                 genericMethod.Invoke(this, new object[] { asset.Key, Convert.ChangeType(asset.Value, asset.Value.GetType()) }); 
             }
@@ -416,15 +430,6 @@ namespace Microsoft.Xna.Framework.Content
 			if (disposed)
 			{
 				throw new ObjectDisposedException("ContentManager");
-			}
-
-			if (this.graphicsDeviceService == null)
-			{
-				this.graphicsDeviceService = serviceProvider.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
-				if (this.graphicsDeviceService == null)
-				{
-					throw new InvalidOperationException("No Graphics Device Service");
-				}
 			}
 
             var stream = OpenStream(assetName);
@@ -448,6 +453,58 @@ namespace Microsoft.Xna.Framework.Content
 			disposableAssets.Clear();
 		    loadedAssets.Clear();
 		}
+
+        /// <summary>
+        /// Unloads a single asset.
+        /// </summary>
+        /// <param name="assetName">The name of the asset to unload. This cannot be null.</param>
+        public virtual void UnloadAsset(string assetName)
+        {
+            if (string.IsNullOrEmpty(assetName))
+            {
+                throw new ArgumentNullException("assetName");
+            }
+            if (disposed)
+            {
+                throw new ObjectDisposedException("ContentManager");
+            }
+
+            //Check if the asset exists
+            object asset;
+            if (loadedAssets.TryGetValue(assetName, out asset))
+            {
+                //Check if it's disposable and remove it from the disposable list if so
+                var disposable = asset as IDisposable;
+                if (disposable != null)
+                {
+                    disposable.Dispose();
+                    disposableAssets.Remove(disposable);
+                }
+
+                loadedAssets.Remove(assetName);
+            }
+        }
+
+        /// <summary>
+        /// Unloads a set of assets.
+        /// </summary>
+        /// <param name="assetNames">The names of the assets to unload.</param>
+        public virtual void UnloadAssets(IList<string> assetNames)
+        {
+            if (assetNames == null)
+            {
+                throw new ArgumentNullException("assetNames");
+            }
+            if (disposed)
+            {
+                throw new ObjectDisposedException("ContentManager");
+            }
+
+            for (int i = 0; i < assetNames.Count; i++)
+            {
+                UnloadAsset(assetNames[i]);
+            }
+        }
 
 		public string RootDirectory
 		{
@@ -476,13 +533,5 @@ namespace Microsoft.Xna.Framework.Content
 				return this.serviceProvider;
 			}
 		}
-
-        internal byte[] GetScratchBuffer(int size)
-        {            
-            size = Math.Max(size, 1024 * 1024);
-            if (scratchBuffer == null || scratchBuffer.Length < size)
-                scratchBuffer = new byte[size];
-            return scratchBuffer;
-        }
-	}
+    }
 }
